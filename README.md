@@ -16,4 +16,4 @@ devtools::install_github("jiaojhua/PACells")
 * For AD datasets (Fig. 3), please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
 # Dependencies
-To run PACells, it needs to install a list of R packages, including: Seurat, chromVAR, SGL, chromVARmotifs, motifmatchr, Signac, SummarizedExperiment, gam, survival, snowfall
+To run PACells, it needs to install a list of R packages, including: Seurat, chromVAR, SGL, chromVARmotifs, motifmatchr, Signac, SummarizedExperiment, gam, survival, snowfall.
