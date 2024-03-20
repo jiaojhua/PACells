@@ -11,9 +11,9 @@ devtools::install_github("jiaojhua/PACells")
 
 # Tutorials
 
-* For CLL datasets (Fig. 2), please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
-* For AD datasets (Fig. 3), please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
 # Dependencies
 To run PACells, it needs to install a list of R packages, including: Seurat, chromVAR, SGL, chromVARmotifs, motifmatchr, Signac, SummarizedExperiment, gam, survival, snowfall.
