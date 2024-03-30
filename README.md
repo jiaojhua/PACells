@@ -17,3 +17,6 @@ devtools::install_github("jiaojhua/PACells")
 
 # Dependencies
 To run PACells, it needs to install a list of R packages, including: Seurat, chromVAR, SGL, chromVARmotifs, motifmatchr, Signac, SummarizedExperiment, gam, survival, snowfall.
+
+# Contact us
+If you have any suggestions or problems, please contact Jiao Hua (jhua@stu.hit.edu.cn).
