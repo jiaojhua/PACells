@@ -11,8 +11,11 @@ PACells.RNA(
   cutoff = 0.1,
   screenRatio = 0.8,
   family = c("binomial", "gaussian", "cox")[1],
-  group = NULL,
-  seed = 123
+  method = c("KL", "Pearson", "Spearman")[1],
+  res = 1,
+  dims_Neighbors = 1:30,
+  dims_UMAP = 1:30,
+  group = NULL
 )
 }
 \arguments{
@@ -35,7 +38,15 @@ An appropriate ratio (default \code{80\%}) is recommended depending on the input
 can be \code{family = gaussian} for linear regression, \code{family = binomial} for classification,
 or \code{family = cox} for Cox regression.}
 
-\item{group}{A vector of grouping information of single cells, which is calculated by the Seurat package or provided by the user.}
+\item{method}{Method (default KL divergence) for calculating the similarity matrix of bulk and single cells.}
+
+\item{res}{the resolution parameter (default 1) in the FindClusters function, which is used to group cells.}
+
+\item{dims_Neighbors}{Dimensions of reduction to construct nearest-neighbor graph.}
+
+\item{dims_UMAP}{Dimensions of reduction to UMAP.}
+
+\item{group}{A vector of grouping information of single cells, when is provided by the user, is not calculated by the Seurat package.}
 }
 \value{
 This function returns a Seurat-class object. It contains the results that cell state identified by PACells as strongly associated with the clinical phenotype.
