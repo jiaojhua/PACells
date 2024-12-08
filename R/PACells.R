@@ -89,8 +89,13 @@ getMotifs <- function(species = "Homo sapiens",
 #' @param family Response type for the regression model. It depends on the type of the given phenotype and
 #' can be \code{family = gaussian} for linear regression, \code{family = binomial} for classification,
 #' or \code{family = cox} for Cox regression.
-#' @param group A vector of grouping information of single cells, which is calculated by the Signac package or provided by the user.
-#' @param refgenome A reference genome (hg38 or hg19).
+#' @param method Method for calculating the similarity matrix of bulk and single cells. The default is KL divergence.
+#' @param sc_refgenome A reference genome for scATAC-seq data (hg38 or hg19).
+#' @param sc_refgenome A reference genome for bulk ATAC-seq data (hg38 or hg19).
+#' @param res the resolution parameter (default 1) in the FindClusters function, which is used to group cells.
+#' @param dims_Neighbors Dimensions of reduction to construct nearest-neighbor graph.
+#' @param dims_UMAP Dimensions of reduction to UMAP.
+#' @param group A vector of grouping information of single cells, when is provided by the user, is not calculated by the Signac package.
 #'
 #'
 #' @return This function returns a Seurat-class object. It contains the results that cell state identified by PACells as strongly associated with the clinical phenotype.
@@ -100,13 +105,16 @@ getMotifs <- function(species = "Homo sapiens",
 PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
                     cutoff = 0.1, screenRatio = 0.8,
                     family = c("binomial", "gaussian", "cox")[1],
-                    group = NULL, sc_refgenome = c("hg38", "hg19")[1],
-                    bulk_refgenome = c("hg38", "hg19")[1],seed = 123)
+                    method = c("KL", "Pearson", "Spearman")[1],
+                    sc_refgenome = c("hg38", "hg19")[1],
+                    bulk_refgenome = c("hg38", "hg19")[1],
+                    res = 1, dims_Neighbors = 2:30, dims_UMAP = 2:30,
+                    group = NULL)
 {
 
 
   RNGkind("L'Ecuyer-CMRG")
-  set.seed(seed)
+  set.seed(123)
   #count matrix is the SummarizedExperiment class, motifs is the motif pwm matrix
   getTFscore <- function (object, motifs, refgenome = c("hg38", "hg19"))
   {
@@ -128,47 +136,74 @@ PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
   }
   sc_TFscore <- getTFscore(sc_dataset, motifs, sc_refgenome)
   bulk_TFscore <- getTFscore(bulk_dataset, motifs, bulk_refgenome)
+  sc_TFscore[is.na(sc_TFscore)]=0
+  bulk_TFscore[is.na(bulk_TFscore)]=0
   cat("TF Activity Matrix done","\n")
 
-  #get Similarty Matrix (KL)
-  getSimilartyMatrix <- function(bulk_TFscore, sc_TFscore){
 
-    dataset0 <- cbind(bulk_TFscore,sc_TFscore)
-    dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+  #get Similarty Matrix
 
-    bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
-    sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+  ##get Similarty Matrix (KL)
+  if(method == "KL"){
+    getSimilartyMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      nbins <- seq(min(dataset1), max(dataset1),length.out = dim(dataset1)[1]*2)
+      sc_TFscore_count <- apply(sc_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
+      bulk_TFscore_count <- apply(bulk_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
+      bulk_TFscore_list <- lapply(seq_len(ncol(bulk_TFscore_count)), function(i) bulk_TFscore_count[,i])
+      KlDist <- function(x, y, base=2){
+        x[x == 0] <- 1e-15
+        y[y == 0] <- 1e-15
+        x <- x/sum(x)
+        y <- y/sum(y)
+        D1 <- sum(x * log(x/y, base = base))
+        D2 <- sum(y * log(y/x, base = base))
+        D <- (D1 + D2)/2
+        return(list(D1 = D1, D2 = D2, D = D))
+      }
+      KLMatrix1 <- t(as.data.frame(lapply(bulk_TFscore_list,function(x){
+        apply(sc_TFscore_count,2,function(y){KlDist(x,y)$D2})
+      })))
+      KL1Matrix <- max(KLMatrix1)-KLMatrix1
+      rownames(KL1Matrix) <- colnames(bulk_TFscore)
+      colnames(KL1Matrix) <- colnames(sc_TFscore)
 
-    nbins <- seq(min(dataset1), max(dataset1),length.out = dim(dataset1)[1]*2)###########
-    sc_TFscore_count <- apply(sc_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
-    bulk_TFscore_count <- apply(bulk_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
-
-    bulk_TFscore_list <- lapply(seq_len(ncol(bulk_TFscore_count)), function(i) bulk_TFscore_count[,i])
-
-
-    KlDist <- function(x, y, base=2){
-
-      x[x == 0] <- 1e-15
-      y[y == 0] <- 1e-15
-      x <- x/sum(x)
-      y <- y/sum(y)
-      D1 <- sum(x * log(x/y, base = base))
-      D2 <- sum(y * log(y/x, base = base))
-      D <- (D1 + D2)/2
-      return(list(D1 = D1, D2 = D2, D = D))
-
+      return(KL1Matrix)
     }
-
-    KLMatrix1 <- t(as.data.frame(lapply(bulk_TFscore_list,function(x){
-      apply(sc_TFscore_count,2,function(y){KlDist(x,y)$D2})
-    })))
-    KL1Matrix <- max(KLMatrix1)-KLMatrix1
-    rownames(KL1Matrix) <- colnames(bulk_TFscore)
-    colnames(KL1Matrix) <- colnames(sc_TFscore)
-
-    return(KL1Matrix)
+    simmtx <- getSimilartyMatrix(bulk_TFscore, sc_TFscore)
   }
-  simmtx <- getSimilartyMatrix(bulk_TFscore, sc_TFscore)
+
+  ##get Similarty Matrix (Pearson)
+  if(method == "Pearson"){
+    getPearsonMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      pearsonMatrix <- cor(bulk_TFscore1, sc_TFscore1, method = c("pearson", "spearman")[1])
+
+      return(pearsonMatrix)
+    }
+    simmtx <- getPearsonMatrix(bulk_TFscore, sc_TFscore)
+  }
+
+  ##get Similarty Matrix (Spearman)
+  if(method == "Spearman"){
+    getSpearmanMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      spearsonMatrix <- cor(bulk_TFscore1, sc_TFscore1, method = c("pearson", "spearman")[2])
+
+      return(spearsonMatrix)
+    }
+    simmtx <- getSpearmanMatrix(bulk_TFscore, sc_TFscore)
+  }
+
   cat("Similarty Matrix Done","\n")
 
   ####cell Pre-filtered
@@ -210,8 +245,9 @@ PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
   ##candidatecell: the candidate cells by runing the SBISIS
   ##ratio: The highest ratio of cells were identified
   ##resolution: the parameter findclusters()
-  identifyCellSub <- function (X, Y, family = c("gaussian", "binomial", "cox")[2], object,
-                               candidatecell, cutoff = 0.1, resolution = 1, group = NULL)
+  identifyCellSub <- function (X, Y, family = c("binomial", "gaussian", "cox")[1], object,
+                               candidatecell, cutoff = 0.1, resolution = 1,
+                               dims_Neighbors = 2:30, dims_UMAP = 2:30, group = NULL)
   {
     ratio <- cutoff
     seurat_object <- object
@@ -220,14 +256,14 @@ PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
                                      verbose = F)
     seurat_object <- RunSVD(seurat_object, verbose = F)
     seurat_object <- RunUMAP(object = seurat_object, reduction = "lsi",
-                             dims = 2:30, verbose = F)
+                             dims = dims_UMAP, verbose = F)
     seurat_object <- FindNeighbors(object = seurat_object, reduction = "lsi",
-                                   dims = 2:30, verbose = F)
+                                   dims = dims_Neighbors, verbose = F)
     seurat_object <- FindClusters(object = seurat_object, verbose = FALSE,
                                   algorithm = 3, resolution = resolution)
     if(!is.null(group)){
 
-      index <- group[candidatecell]###
+      index <- group[candidatecell]
 
     } else {
       index <- seurat_object$seurat_clusters[candidatecell]
@@ -272,24 +308,27 @@ PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
     return(sc_data)
   }
 
-  sc_data <-  identifyCellSub(X=simmtx, Y=phenotype, family = c("gaussian", "binomial", "cox")[2],
+  sc_data <-  identifyCellSub(X=simmtx, Y=phenotype, family = family,
                               object = sc_dataset, candidatecell=cand_cell,
-                              cutoff = cutoff, resolution = 1)
+                              cutoff = cutoff, resolution = res,
+                              dims_Neighbors = dims_Neighbors, dims_UMAP = dims_UMAP,
+                              group=group)
 
   return(sc_data)
 }
 
-
-#' PACells.RNA: identify clinical phenotype-associated cell states from Single-cell RNA-seq Data
+#' PACells: identify clinical phenotype-associated cell states from Single-cell ATAC-seq Data
 #'
 #'  \code{PACells} is a novel approach to identify clinical phenotype-associated
 #'  cell states from single-cell data using the phenotype, such as disease
 #'  status, prognosis, and treatment response collected from bulk assays .
 #'
-#' @param sc_dataset A expression matrix of single-cell data.
-#' @param bulk_dataset A expression matrix of bulk data.
+#' @param sc_dataset A Seurat object of single-cell data.
+#' @param bulk_dataset A Seurat object of bulk data.
 #' @param phenotype A Phenotype annotation of bulk samples. It can be a binary
 #' group indicator vector, continuous dependent variable, or clinical survival data.
+#' @param covariates A data.frame object of the covariates form bulk samples.
+#' @param motifs The TF Motifs from "JASPAR" or "cisBP" database.
 #' @param cutoff Cutoff for the percentage of the PACells selected cells in total cells. This parameter is used to
 #' restrict the number of the PACells selected cells. A smaller cutoff value (default \code{10\%}) is recommended
 #' depending on the input data.
@@ -299,62 +338,123 @@ PACells <- function(sc_dataset, bulk_dataset, phenotype, motifs,
 #' @param family Response type for the regression model. It depends on the type of the given phenotype and
 #' can be \code{family = gaussian} for linear regression, \code{family = binomial} for classification,
 #' or \code{family = cox} for Cox regression.
-#' @param group A vector of grouping information of single cells, which is calculated by the Seurat package or provided by the user.
+#' @param method Method for calculating the similarity matrix of bulk and single cells. The default is KL divergence.
+#' @param sc_refgenome A reference genome for scATAC-seq data (hg38 or hg19).
+#' @param sc_refgenome A reference genome for bulk ATAC-seq data (hg38 or hg19).
+#' @param res the resolution parameter (default 1) in the FindClusters function, which is used to group cells.
+#' @param dims_Neighbors Dimensions of reduction to construct nearest-neighbor graph.
+#' @param dims_UMAP Dimensions of reduction to UMAP.
+#' @param group A vector of grouping information of single cells, when is provided by the user, is not calculated by the Signac package.
 #'
 #'
 #' @return This function returns a Seurat-class object. It contains the results that cell state identified by PACells as strongly associated with the clinical phenotype.
 #'
 #' @export
 
-PACells.RNA <- function(sc_dataset, bulk_dataset, phenotype,
-                    cutoff = 0.1, screenRatio = 0.8,
-                    family = c("binomial", "gaussian", "cox")[1],
-                    group = NULL, seed = 123)
+PACells.Covar <- function(sc_dataset, bulk_dataset, phenotype,covariates, motifs,
+                          cutoff = 0.1, screenRatio = 0.8,
+                          family = c("binomial", "gaussian", "cox")[1],
+                          method = c("KL", "Pearson", "Spearman")[1],
+                          sc_refgenome = c("hg38", "hg19")[1],
+                          bulk_refgenome = c("hg38", "hg19")[1],
+                          res = 1, dims_Neighbors = 2:30, dims_UMAP = 2:30,
+                          group = NULL)
 {
 
   RNGkind("L'Ecuyer-CMRG")
-  set.seed(seed)
-  #get Similarty Matrix (KL)
-  getSimilartyMatrix <- function(bulk_dataset, sc_dataset){
-    common <- intersect(rownames(bulk_count), rownames(sc_count))
+  set.seed(123)
+  #count matrix is the SummarizedExperiment class, motifs is the motif pwm matrix
+  getTFscore <- function (object, motifs, refgenome = c("hg38", "hg19"))
+  {
+    if (refgenome == "hg19") {
+      genom = BSgenome.Hsapiens.UCSC.hg19
+    }
+    if (refgenome == "hg38") {
+      genom = BSgenome.Hsapiens.UCSC.hg38
+    }
+    count <- SummarizedExperiment(assays=SimpleList(counts = object@assays$ATAC@data),
+                                  rowRanges = object@assays$ATAC@ranges, colData = object@meta.data)
+    counts_GC <- addGCBias(count, genome = genom)
+    counts_filtered <- filterPeaks(counts_GC)
+    motif_ann <- matchMotifs(motifs, counts_filtered, genome = genom)
+    dev <- computeDeviations(object = counts_filtered, annotations = motif_ann)
+    z_score <- deviationScores(dev)
+    return(z_score)
+  }
+  sc_TFscore <- getTFscore(sc_dataset, motifs, sc_refgenome)
+  bulk_TFscore <- getTFscore(bulk_dataset, motifs, bulk_refgenome)
+  sc_TFscore[is.na(sc_TFscore)]=0
+  bulk_TFscore[is.na(bulk_TFscore)]=0
+  cat("TF Activity Matrix done","\n")
 
+  #get Similarty Matrix
+  ##get Similarty Matrix (KL)
+  if(method == "KL"){
+    getSimilartyMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      nbins <- seq(min(dataset1), max(dataset1),length.out = dim(dataset1)[1]*2)
+      sc_TFscore_count <- apply(sc_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
+      bulk_TFscore_count <- apply(bulk_TFscore1, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
+      bulk_TFscore_list <- lapply(seq_len(ncol(bulk_TFscore_count)), function(i) bulk_TFscore_count[,i])
+      KlDist <- function(x, y, base=2){
+        x[x == 0] <- 1e-15
+        y[y == 0] <- 1e-15
+        x <- x/sum(x)
+        y <- y/sum(y)
+        D1 <- sum(x * log(x/y, base = base))
+        D2 <- sum(y * log(y/x, base = base))
+        D <- (D1 + D2)/2
+        return(list(D1 = D1, D2 = D2, D = D))
+      }
+      KLMatrix1 <- t(as.data.frame(lapply(bulk_TFscore_list,function(x){
+        apply(sc_TFscore_count,2,function(y){KlDist(x,y)$D2})
+      })))
+      KL1Matrix <- max(KLMatrix1)-KLMatrix1
+      rownames(KL1Matrix) <- colnames(bulk_TFscore)
+      colnames(KL1Matrix) <- colnames(sc_TFscore)
 
-    dataset0 <- cbind(bulk_count[common,],sc_count[common,])
-    dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
-
-    bulk_norm <- dataset1[,1:dim(bulk_count)[2]]
-    sc_norm <- dataset1[,-c(1:dim(bulk_count)[2])]
-
-    nbins <- seq(min(dataset1), max(dataset1),length.out = dim(dataset1)[1]*2)###########
-    sc_1 <- apply(bulk_norm, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
-    bulk_1 <- apply(bulk_norm, 2, function(x){hist(x, breaks = nbins, plot = FALSE)$counts})
-
-    bulk_1_list <- lapply(seq_len(ncol(bulk_1)), function(i) bulk_1[,i])
-
-
-    KlDist <- function(x, y, base=2){
-
-      x[x == 0] <- 1e-15
-      y[y == 0] <- 1e-15
-      x <- x/sum(x)
-      y <- y/sum(y)
-      D1 <- sum(x * log(x/y, base = base))
-      D2 <- sum(y * log(y/x, base = base))
-      D <- (D1 + D2)/2
-      return(list(D1 = D1, D2 = D2, D = D))
-
+      return(KL1Matrix)
     }
 
-    KLMatrix1 <- t(as.data.frame(lapply(bulk_1_list,function(x){
-      apply(sc_1,2,function(y){KlDist(x,y)$D2})
-    })))
-    KL1Matrix <- max(KLMatrix1)-KLMatrix1
-    rownames(KL1Matrix) <- colnames(bulk_TFscore)
-    colnames(KL1Matrix) <- colnames(sc_TFscore)
+    simmtx <- getSimilartyMatrix(bulk_TFscore, sc_TFscore)
 
-    return(KL1Matrix)
   }
-  simmtx <- getSimilartyMatrix(is.matrix(bulk_dataset), is.matrix(sc_dataset))
+
+  ##get Similarty Matrix (Pearson)
+  if(method == "Pearson"){
+    getPearsonMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      pearsonMatrix <- cor(bulk_TFscore1, sc_TFscore1, method = c("pearson", "spearman")[1])
+
+      return(pearsonMatrix)
+    }
+
+    simmtx <- getPearsonMatrix(bulk_TFscore, sc_TFscore)
+
+  }
+
+  ##get Similarty Matrix (Spearman)
+  if(method == "Spearman"){
+    getSpearmanMatrix <- function(bulk_TFscore, sc_TFscore){
+      dataset0 <- cbind(bulk_TFscore,sc_TFscore)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_TFscore1 <- dataset1[,1:dim(bulk_TFscore)[2]]
+      sc_TFscore1 <- dataset1[,-c(1:dim(bulk_TFscore)[2])]
+      spearsonMatrix <- cor(bulk_TFscore1, sc_TFscore1, method = c("pearson", "spearman")[2])
+
+      return(spearsonMatrix)
+    }
+
+    simmtx <- getSpearmanMatrix(bulk_TFscore, sc_TFscore)
+
+  }
+
   cat("Similarty Matrix Done","\n")
 
   ####cell Pre-filtered
@@ -396,8 +496,249 @@ PACells.RNA <- function(sc_dataset, bulk_dataset, phenotype,
   ##candidatecell: the candidate cells by runing the SBISIS
   ##ratio: The highest ratio of cells were identified
   ##resolution: the parameter findclusters()
-  identifyCellSub <- function (X, Y, family = c("gaussian", "binomial", "cox")[2], object,
-                               candidatecell, cutoff = 0.1, resolution = 1, group = NULL)
+  identifyCellSub.Covar <- function (X, Y, covariates,family = c("binomial", "gaussian", "cox")[1], object,
+                                     candidatecell, cutoff = 0.1, resolution = 1,
+                                     dims_Neighbors = 2:30, dims_UMAP = 2:30, group = NULL)
+  {
+    ratio <- cutoff
+    seurat_object <- object
+    seurat_object <- RunTFIDF(seurat_object, verbose = F)
+    seurat_object <- FindTopFeatures(seurat_object, min.cutoff = "q10",
+                                     verbose = F)
+    seurat_object <- RunSVD(seurat_object, verbose = F)
+    seurat_object <- RunUMAP(object = seurat_object, reduction = "lsi",
+                             dims = dims_UMAP, verbose = F)
+    seurat_object <- FindNeighbors(object = seurat_object, reduction = "lsi",
+                                   dims = dims_Neighbors, verbose = F)
+    seurat_object <- FindClusters(object = seurat_object, verbose = FALSE,
+                                  algorithm = 3, resolution = resolution)
+    if(!is.null(group)){
+
+      index <- group[candidatecell]
+
+    } else {
+      index <- seurat_object$seurat_clusters[candidatecell]
+    }
+    index_covar <- c(rep(length(table(index))+1, dim(covariates)[2]),index)
+    cell_x <- X[, cand_cell]
+    inpute_x <- cbind(Covariate,cell_x)
+
+    if(family == "cox"){
+      data = list(x = inpute_x, time = Y[,1], status = Y[,2])
+      fit <- SGL::SGL(data, index_covar, type = "cox", min.frac = 0.001,
+                      nlam = 1000, standardize = F, alpha = 0, lambdas = seq(0.001,1,0.001))
+
+    }
+    if(family == "gaussian"){
+      data = list(x= inpute_x, y = Y)
+      fit <- SGL::SGL(data, index_covar, type = "linear", min.frac = 0.001,
+                      nlam = 1000, standardize = F, alpha = 0, lambdas = seq(0.001,1,0.001))
+
+    }
+    if(family == "binomial"){
+      data = list(x= inpute_x, y = Y)
+      fit <- SGL::SGL(data, index_covar, type = "logit", min.frac = 0.001,
+                      nlam = 1000, standardize = F, alpha = 0, lambdas = seq(0.001,1,0.001))
+
+    }
+    beta_cell <- fit$beta[-dim(covariates)[2],]
+    for (k in 1:dim(beta_cell)[2]) {
+      nonzero_ratio <- (length(which((beta_cell[, k] > 0))))/(dim(X)[2])
+      num <- k
+      if (nonzero_ratio < ratio)
+        break
+    }
+
+    sgl_results <- beta_cell[, num]
+    label_sgl <- rep("Background", dim(X)[2])
+    names(label_sgl) <- colnames(X)
+    label_sgl[colnames(cell_x)[which(sgl_results > 0)]] = "PACells"
+    cat("Label Summary (B/P): ", table(label_sgl))
+    sc_data <- seurat_object
+    sc_data@meta.data$PACells_label <- factor(label_sgl, levels = c("PACells",
+                                                                    "Background"))
+    return(sc_data)
+  }
+
+  sc_data <-  identifyCellSub.Covar(X=simmtx, Y=phenotype,covariates =covariates, family = family,
+                                    object = sc_dataset, candidatecell=cand_cell,
+                                    cutoff = cutoff, resolution = res,
+                                    dims_Neighbors = dims_Neighbors, dims_UMAP = dims_UMAP,
+                                    group=group)
+
+  return(sc_data)
+}
+
+
+
+
+#' PACells.RNA: identify clinical phenotype-associated cell states from Single-cell RNA-seq Data
+#'
+#'  \code{PACells} is a novel approach to identify clinical phenotype-associated
+#'  cell states from single-cell data using the phenotype, such as disease
+#'  status, prognosis, and treatment response collected from bulk assays .
+#'
+#' @param sc_dataset A expression matrix of single-cell data.
+#' @param bulk_dataset A expression matrix of bulk data.
+#' @param phenotype A Phenotype annotation of bulk samples. It can be a binary
+#' group indicator vector, continuous dependent variable, or clinical survival data.
+#' @param cutoff Cutoff for the percentage of the PACells selected cells in total cells. This parameter is used to
+#' restrict the number of the PACells selected cells. A smaller cutoff value (default \code{10\%}) is recommended
+#' depending on the input data.
+#' @param screenRatio Pre-screen candidate cells that are strongly related to the phenotype.
+#' This parameter is used to pre-screen the percentage of candidate cells based Bcor measure.
+#' An appropriate ratio (default \code{80\%}) is recommended depending on the input data.
+#' @param family Response type for the regression model. It depends on the type of the given phenotype and
+#' can be \code{family = gaussian} for linear regression, \code{family = binomial} for classification,
+#' or \code{family = cox} for Cox regression.
+#' @param method Method (default KL divergence) for calculating the similarity matrix of bulk and single cells.
+#' @param res the resolution parameter (default 1) in the FindClusters function, which is used to group cells.
+#' @param dims_Neighbors Dimensions of reduction to construct nearest-neighbor graph.
+#' @param dims_UMAP Dimensions of reduction to UMAP.
+#' @param group A vector of grouping information of single cells, when is provided by the user, is not calculated by the Seurat package.
+#'
+#'
+#' @return This function returns a Seurat-class object. It contains the results that cell state identified by PACells as strongly associated with the clinical phenotype.
+#'
+#' @export
+
+PACells.RNA <- function(sc_dataset, bulk_dataset, phenotype,
+                    cutoff = 0.1, screenRatio = 0.8,
+                    family = c("binomial", "gaussian", "cox")[1],
+                    method = c("KL", "Pearson", "Spearman")[1],
+                    res = 1, dims_Neighbors = 1:30, dims_UMAP = 1:30,
+                    group = NULL)
+{
+
+  RNGkind("L'Ecuyer-CMRG")
+  set.seed(123)
+  #get Similarty Matrix
+  #get Similarty Matrix (KL)
+  if(method == "KL"){
+  getSimilartyMatrix <- function(bulk_count, sc_count) {
+    common <- intersect(rownames(bulk_count), rownames(sc_count))
+    dataset0 <- cbind(bulk_count[common, ], sc_count[common,
+    ])
+    dataset1 <- preprocessCore::normalize.quantiles(dataset0,
+                                                    keep.names = TRUE)
+    bulk_norm <- dataset1[, 1:dim(bulk_count)[2]]
+    sc_norm <- dataset1[, -c(1:dim(bulk_count)[2])]
+    nbins <- seq(min(dataset1), max(dataset1), length.out = dim(dataset1)[1] *
+                   2)
+    sc_1 <- apply(sc_norm, 2, function(x) {
+      hist(x, breaks = nbins, plot = FALSE)$counts
+    })
+    bulk_1 <- apply(bulk_norm, 2, function(x) {
+      hist(x, breaks = nbins, plot = FALSE)$counts
+    })
+    bulk_1_list <- lapply(seq_len(ncol(bulk_1)), function(i) bulk_1[,
+                                                                    i])
+    KlDist <- function(x, y, base = 2) {
+      x[x == 0] <- 1e-15
+      y[y == 0] <- 1e-15
+      x <- x/sum(x)
+      y <- y/sum(y)
+      D1 <- sum(x * log(x/y, base = base))
+      D2 <- sum(y * log(y/x, base = base))
+      D <- (D1 + D2)/2
+      return(list(D1 = D1, D2 = D2, D = D))
+    }
+    KLMatrix1 <- t(as.data.frame(lapply(bulk_1_list, function(x) {
+      apply(sc_1, 2, function(y) {
+        KlDist(x, y)$D2
+      })
+    })))
+    KL1Matrix <- max(KLMatrix1) - KLMatrix1
+    rownames(KL1Matrix) <- colnames(bulk_count)
+    colnames(KL1Matrix) <- colnames(sc_count)
+    return(KL1Matrix)
+  }
+  simmtx <- getSimilartyMatrix(as.matrix(bulk_dataset), as.matrix(sc_dataset))
+
+  }
+
+  ##get Similarty Matrix (Pearson)
+  if(method == "Pearson"){
+
+    getPearsonMatrix <- function(bulk_count, sc_count){
+
+      dataset0 <- cbind(bulk_count,sc_count)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+      bulk_count1 <- dataset1[,1:dim(bulk_count)[2]]
+      sc_count1 <- dataset1[,-c(1:dim(bulk_count)[2])]
+      pearsonMatrix <- cor(bulk_count1, sc_count1, method = c("pearson", "spearman")[1])
+
+      return(pearsonMatrix)
+    }
+
+    simmtx <- getPearsonMatrix(bulk_count, sc_count)
+
+  }
+
+  ##get Similarty Matrix (Spearman)
+  if(method == "Spearman"){
+
+    getSpearmanMatrix <- function(bulk_count, sc_count){
+
+      dataset0 <- cbind(bulk_count,sc_count)
+      dataset1 <- preprocessCore::normalize.quantiles(dataset0, keep.names = TRUE)
+
+      bulk_count1 <- dataset1[,1:dim(bulk_count)[2]]
+      sc_count1 <- dataset1[,-c(1:dim(bulk_count)[2])]
+
+      spearsonMatrix <- cor(bulk_count1, sc_count1, method = c("pearson", "spearman")[2])
+
+      return(spearsonMatrix)
+    }
+
+    simmtx <- getSpearmanMatrix(bulk_count, sc_count)
+
+  }
+
+  cat("Similarty Matrix Done","\n")
+
+  ####cell Pre-filtered
+  ##X is all all single cell similarty matrix
+  getCandidateCell <- function(simmtx, phenotype, screenRatio = 0.8,
+                               family = "binomial"){
+    X <- simmtx
+    Y <- phenotype
+    ratio <- screenRatio
+    #    methods <- methods
+    filter_num <-  dim(X)[2]*ratio
+    if(family == "binomial"){
+      fit <- sbisis(X = X, Y = Y,
+                    candidate = filter_num,
+                    method = "SBI-SIS-Pvalue",R=10)
+    }
+    if(family == "gaussian"){
+      fit <- sbisis(X = X, Y = Y,
+                    candidate = filter_num,
+                    method = "SBI-SIS-Pvalue",R=10)
+    }
+    if(family == "cox"){
+      fit <- sbisis.surv(X = X, Y = Y,
+                         candidate = filter_num)
+    }
+    candidate_cell <- fit$candidate.set
+
+    return(candidate_cell)
+  }
+  cand_cell <- getCandidateCell(simmtx, phenotype, screenRatio=screenRatio,
+                                family = family)
+
+  cat("Pre-screening Done","\n")
+
+  ##X is all all single cell similarty matrix,
+  ##Y: phenotype label,
+  ##counts: the matrix of all cell
+  ##sc_peak: the peaks of single cell data
+  ##candidatecell: the candidate cells by runing the SBISIS
+  ##ratio: The highest ratio of cells were identified
+  ##resolution: the parameter findclusters()
+  identifyCellSub <- function (X, Y, family = c("binomial", "gaussian", "cox")[1], object,
+                               candidatecell, cutoff = 0.1, resolution = 1,
+                               dims_Neighbors = 1:30, dims_UMAP = 1:30, group = NULL)
   {
     ratio <- cutoff
     seurat_object <- object
@@ -407,10 +748,10 @@ PACells.RNA <- function(sc_dataset, bulk_dataset, phenotype,
     seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst", nfeatures = 2000, verbose = F)
     seurat_object <- ScaleData(seurat_object,verbose = F)
     seurat_object <- RunPCA(seurat_object, verbose = F)
-    seurat_object <- FindNeighbors(seurat_object, dims = 1:30, verbose = F)
+    seurat_object <- FindNeighbors(seurat_object, dims = dims_Neighbors, verbose = F)
     seurat_object <- FindClusters(seurat_object,
-                              resolution = 1)
-    seurat_object <- RunUMAP(seurat_object, dims = 1:30, verbose = F)
+                              resolution = 1, verbose = F)
+    seurat_object <- RunUMAP(seurat_object, dims = dims_UMAP, verbose = F)
 
     if(!is.null(group)){
 
@@ -459,14 +800,18 @@ PACells.RNA <- function(sc_dataset, bulk_dataset, phenotype,
     return(sc_data)
   }
 
-  sc_data <-  identifyCellSub(X=simmtx, Y=phenotype, family = c("gaussian", "binomial", "cox")[2],
+  sc_data <-  identifyCellSub(X=simmtx, Y=phenotype, family = family,
                               object = sc_dataset, candidatecell=cand_cell,
-                              cutoff = cutoff, resolution = 1)
+                              cutoff = cutoff, resolution = res,
+                              dims_Neighbors = dims_Neighbors, dims_UMAP = dims_UMAP,
+                              group = NULL)
 
   return(sc_data)
 }
 
 
+
+#These is obtained from https://doi.org/10.1080/01621459.2018.1462709.
 ##  Pre-screening candidate cells based on Bcor.
 ##
 ##' @param Y a numeric matirx(phenotype).
