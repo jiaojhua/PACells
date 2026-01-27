@@ -19,7 +19,7 @@ options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 devtools::install_github("jiaojhua/PACells")
 ```
-## Verify installation
+### Verify installation
 
 ```R
 library(PACells)
