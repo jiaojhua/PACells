@@ -27,12 +27,15 @@ packageVersion("PACells")
 ```
 
 ## Quick Start
+
+Here, we provide a minimal quick-start tutorial using a binary phenotype (e.g., case/control) to demonstrate the basic PACells workflow. This example is intended as the simplest “run-through” to help users get PACells running end-to-end with standard settings. For more detailed usages, please refer to the ```Tutorials```.
+
 ### scATAC-seq (bulk ATAC-seq + scATAC-seq)
 
 ```R
 library(PACells)
 
-# Prepare motif set
+# Prepare TF motif set
 motifs <- getMotifs(database = "JASPAR")
 
 # phenotype should be aligned to bulk samples (columns of bulk_dataset)
@@ -41,11 +44,7 @@ sc_res <- PACells(
   bulk_dataset = bulk_dataset,
   phenotype    = phenotype,
   motifs       = motifs,
-  family       = "binomial",  
-  method       = "KL",    
-  cutoff       = 0.1,
-  screenRatio  = 0.8,
-  batch        = "none"  
+  family       = "binomial"
 )
 
 table(sc_res$PACells_label)
@@ -63,29 +62,25 @@ sc_res_rna <- PACells.RNA(
   sc_dataset   = sc_mat,
   bulk_dataset = bulk_mat,
   phenotype    = phenotype,
-  family       = "binomial",
-  method       = "KL",
-  cutoff       = 0.1,
-  screenRatio  = 0.8,
-  batch        = "none"
+  family       = "binomial"
 )
 
 table(sc_res_rna$PACells_label)
 ```
 
 
-# Tutorials
+## Tutorials
 
 * For CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
 * For AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
-# Dependencies
+## Dependencies
 - Seurat, Signac
 - chromVAR, chromVARmotifs, motifmatchr
 - SummarizedExperiment
 - SGL, gam, survival
 - snowfall
 
-# Contact
+## Contact
 If you have any suggestions or problems, please feel free to contact Jiao Hua (jhua@stu.hit.edu.cn).
