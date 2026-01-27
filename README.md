@@ -2,7 +2,7 @@
 PACells identifies clinical phenotype-associated cell states by integrating bulk and single-cell chromatin accessibility profiles
 
 ## Overview
-We introduce PACells, 
+We introduce PACells, a computational framework to identify cell states associated with clinical phenotypes from scATAC-seq data guided by bulk ATAC-seq data annotated with clinical phenotype information. PACells links phenotype information measured in bulk samples to individual cells in single-cell data and outputs the subset of cells most associated with the phenotype of interest (e.g., **disease status**, **prognosis**, **treatment response**), helping users interpret clinically relevant cellular heterogeneity. PACells also provides an optional extension for **scRNA-seq** guided by bulk RNA-seq data.
 
 <p align="center">
 <img  src="tutorial/PACells.png" width="800" height=auto > 
