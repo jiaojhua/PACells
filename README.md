@@ -51,7 +51,7 @@ sc_res <- PACells(
 table(sc_res$PACells_label)
 ```
 
-**Tip (batch effect)**: if cells are mainly separated by batchs, consider batch = "harmony".
+**Tip (batch effect)**: if cells are mainly separated by batchs, consider ```batch = "harmony"```.
 
 ### scRNA-seq (bulk RNA-seq + scRNA-seq)
 
