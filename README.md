@@ -32,7 +32,7 @@ packageVersion("PACells")
 ```R
 library(PACells)
 
-# Prepare motif set (JASPAR or cisBP)
+# Prepare motif set
 motifs <- getMotifs(database = "JASPAR")
 
 # phenotype should be aligned to bulk samples (columns of bulk_dataset)
