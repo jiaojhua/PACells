@@ -20,11 +20,16 @@ if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 devtools::install_github("jiaojhua/PACells")
 ```
 ## Verify installation
+
+```R
 library(PACells)
 packageVersion("PACells")
+```
 
 ## Quick Start
 ### scATAC-seq (bulk ATAC-seq + scATAC-seq)
+
+```R
 library(PACells)
 
 # Prepare motif set (JASPAR or cisBP)
@@ -44,10 +49,13 @@ sc_res <- PACells(
 )
 
 table(sc_res$PACells_label)
+```
 
 **Tip (batch effect)**: if cells are mainly separated by batchs, consider batch = "harmony".
 
 ### scRNA-seq (bulk RNA-seq + scRNA-seq)
+
+```R
 library(PACells)
 
 # sc_mat: genes x cells; bulk_mat: genes x samples
@@ -63,7 +71,7 @@ sc_res_rna <- PACells.RNA(
 )
 
 table(sc_res_rna$PACells_label)
-
+```
 
 
 # Tutorials
