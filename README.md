@@ -19,6 +19,25 @@ options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 devtools::install_github("jiaojhua/PACells")
 ```
+
+### (Optional) Install a specific version
+
+#### Option A: Install from a tag
+
+```R
+if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+remotes::install_github("jiaojhua/PACells", ref = "v1.0.0")
+```
+
+#### Option B: Install from GitHub Releases (source tarball)
+
+```R
+if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+remotes::install_url(
+  "https://github.com/jiaojhua/PACells/releases/download/v1.0.0/PACells_1.0.0.tar.gz"
+)
+```
+
 ### Verify installation
 
 ```R
