@@ -1,5 +1,12 @@
-# PACells
+# PACells: Phenotype-Associated Cells
 PACells identifies clinical phenotype-associated cell states by integrating bulk and single-cell chromatin accessibility profiles
+
+## Overview
+We introduce PACells, 
+
+<p align="center">
+<img  src="tutorial/PACells.png" width="800" height=auto > 
+</p>
 
 # Installation
 To run ``PACells`` R package, install from GitHub through ``devtools`` directly:
