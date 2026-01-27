@@ -36,7 +36,7 @@ Here, we provide a minimal quick-start tutorial using a binary phenotype (e.g., 
 library(PACells)
 
 # Prepare TF motif set
-motifs <- getMotifs(database = "JASPAR")
+motifs <- getMotifs(species = "Homo sapiens")
 
 # phenotype should be aligned to bulk samples (columns of bulk_dataset)
 sc_res <- PACells(
