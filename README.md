@@ -90,9 +90,9 @@ table(sc_res_rna$PACells_label)
 
 ## Tutorials
 
-* For CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
-* For AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorial/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
 
 ## Dependencies
 - Seurat, Signac
