@@ -90,11 +90,13 @@ table(sc_res_rna$PACells_label)
 
 ## Tutorials
 
-* For the binary phenotype task on CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1JQetE5ugbmdUmZ6O2wbgPT33SBCiCLqp?usp=drive_link).
+We provide step-by-step tutorials for both **binary** and **survival** phenotype settings, along with ready-to-run example datasets:
 
-* For the binary phenotype task on AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1WgXQ7JgUcKGD8deWTGhJi-JCIe1vMAyQ?usp=drive_link).
+* For the binary phenotype task on CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_CLL.ipynb), and the processed dataset can be downloaded from this [link](https://drive.google.com/drive/folders/1JQetE5ugbmdUmZ6O2wbgPT33SBCiCLqp?usp=drive_link).
 
-* For the survival phenotype task on GBM datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_GBM.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1zDTsYs4u7Hp6qaUyDsu4v19W7eoo-2Lg?usp=drive_link).
+* For the binary phenotype task on AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), and the processed dataset can be downloaded from  this [link](https://drive.google.com/drive/folders/1WgXQ7JgUcKGD8deWTGhJi-JCIe1vMAyQ?usp=drive_link).
+
+* For the survival phenotype task on GBM datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_GBM.ipynb), and the processed dataset can be downloaded from **this link** this [link](https://drive.google.com/drive/folders/1zDTsYs4u7Hp6qaUyDsu4v19W7eoo-2Lg?usp=drive_link).
 
 ## Dependencies
 - Seurat, Signac
