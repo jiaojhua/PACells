@@ -90,9 +90,11 @@ table(sc_res_rna$PACells_label)
 
 ## Tutorials
 
-* For CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For the binary phenotype task on CLL datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_CLL.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1JQetE5ugbmdUmZ6O2wbgPT33SBCiCLqp?usp=drive_link).
 
-* For AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1PpDxiRl8wv2JUdCtBd146cWche-o3U5e?usp=sharing).
+* For the binary phenotype task on AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1WgXQ7JgUcKGD8deWTGhJi-JCIe1vMAyQ?usp=drive_link).
+
+* For the survival phenotype task on GBM datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_GBM.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1zDTsYs4u7Hp6qaUyDsu4v19W7eoo-2Lg?usp=drive_link)
 
 ## Dependencies
 - Seurat, Signac
