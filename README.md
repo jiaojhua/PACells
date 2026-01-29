@@ -1,4 +1,4 @@
-# PACells: Phenotype-Associated Cell ststes
+# PACells: Phenotype-Associated Cell states
 PACells identifies clinical phenotype-associated cell states by integrating bulk and single-cell chromatin accessibility profiles
 
 ## Overview
