@@ -94,7 +94,7 @@ table(sc_res_rna$PACells_label)
 
 * For the binary phenotype task on AD datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_AD.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1WgXQ7JgUcKGD8deWTGhJi-JCIe1vMAyQ?usp=drive_link).
 
-* For the survival phenotype task on GBM datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_GBM.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1zDTsYs4u7Hp6qaUyDsu4v19W7eoo-2Lg?usp=drive_link)
+* For the survival phenotype task on GBM datasets, please see [here](https://github.com/jiaojhua/PACells/blob/main/tutorials/Tutorial_GBM.ipynb), datasets are available at this [link](https://drive.google.com/drive/folders/1zDTsYs4u7Hp6qaUyDsu4v19W7eoo-2Lg?usp=drive_link).
 
 ## Dependencies
 - Seurat, Signac
